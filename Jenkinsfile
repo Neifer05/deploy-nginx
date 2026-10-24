@@ -16,7 +16,7 @@ pipeline {
 
         stage('Build & Deploy to AWS EC2') {
             steps {
-                sshagent(['ubuntu']) {
+                sshagent(['aws-ec2-key']) {
                     sh '''
                         # 1. Clonar o actualizar el repositorio real en la EC2
                         if [ -d 'mi-proyecto' ]; then
