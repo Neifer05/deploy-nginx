@@ -17,29 +17,25 @@ pipeline {
         stage('Build & Deploy to AWS EC2') {
             steps {
                 sshagent(['aws-ec2-key']) {
+                    // Usamos -T para evitar que la terminal interactiva de SSH bloquee el flujo de datos de Docker
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@13.53.175.232 << 'EOF'
-                            # 1. Clonar o actualizar el repositorio en la EC2
+                        ssh -T -o StrictHostKeyChecking=no ubuntu@$EC2_HOST "
                             if [ -d 'mi-proyecto' ]; then
-                                echo "Actualizando repositorio existente..."
-                                cd mi-proyecto
-                                git pull origin main
+                                cd mi-proyecto && git pull origin main
                             else
-                                echo "Clonando repositorio por primera vez..."
                                 git clone https://github.com/Neifer05/deploy-nginx.git mi-proyecto
-                                cd mi-proyecto
                             fi
-                            
-                            # 2. Construir la imagen Docker (ya estamos dentro de 'mi-proyecto')
-                            echo "Construyendo imagen Docker..."
-                            docker build -t mi-deploy-nginx .
-                            
-                            # 3. Parar el contenedor viejo y arrancar el nuevo
-                            echo "Desplegando contenedor..."
-                            docker stop mi-deploy-nginx || true
-                            docker rm mi-deploy-nginx || true
-                            docker run -d --name mi-deploy-nginx -p 80:80 mi-deploy-nginx
-                        EOF
+                        "
+                        
+                        ssh -T -o StrictHostKeyChecking=no ubuntu@$EC2_HOST "
+                            cd mi-proyecto && docker build --no-cache -t $APP_NAME .
+                        "
+                        
+                        ssh -T -o StrictHostKeyChecking=no ubuntu@$EC2_HOST "
+                            docker stop $APP_NAME || true
+                            docker rm $APP_NAME || true
+                            docker run -d --name $APP_NAME -p 80:80 $APP_NAME
+                        "
                     '''
                 }
             }
